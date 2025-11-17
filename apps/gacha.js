@@ -52,37 +52,37 @@ export class Gacha extends plugin {
 
         await this.reply('正在获取抽卡记录，请稍候...')
 
+        let networkFailed = false
+        let fetchError = ''
+        const gachaData = new GachaData()
+
+        // 尝试从网络获取新记录
         try {
             // 获取grant_code
             const grantCode = await hypergryphAPI.getGrantCode(sklUser.token)
             if (!grantCode) {
-                await this.reply('获取授权码失败，请重新绑定token')
-                return true
+                throw new Error('获取授权码失败，请重新绑定token')
             }
 
             // 获取role_token
             const roleToken = await hypergryphAPI.getRoleToken(sklUser.uid, grantCode)
             if (!roleToken) {
-                await this.reply('获取角色令牌失败')
-                return true
+                throw new Error('获取角色令牌失败')
             }
 
             // 获取ak_cookie
             const akCookie = await hypergryphAPI.getAkCookie(roleToken)
             if (!akCookie) {
-                await this.reply('获取cookie失败')
-                return true
+                throw new Error('获取cookie失败')
             }
 
             // 获取卡池类别
             const categories = await this.getGachaCategories(sklUser.uid, roleToken, sklUser.token, akCookie)
             if (!categories || categories.length === 0) {
-                await this.reply('获取卡池类别失败')
-                return true
+                throw new Error('获取卡池类别失败')
             }
 
             // 先读取本地记录，获取最新时间戳用于增量更新
-            const gachaData = new GachaData()
             const localRecords = await gachaData.loadUserRecords(uid, sklUser.uid)
             let maxGachaTs = 0
             
@@ -100,11 +100,6 @@ export class Gacha extends plugin {
                 allRecords = allRecords.concat(records)
             }
 
-            if (allRecords.length === 0 && localRecords.length === 0) {
-                await this.reply('未找到抽卡记录')
-                return true
-            }
-
             // 保存新获取的抽卡记录
             if (allRecords.length > 0) {
                 await this.saveGachaRecords(uid, sklUser.uid, allRecords)
@@ -113,9 +108,30 @@ export class Gacha extends plugin {
                 logger.mark('[抽卡记录] 没有新的抽卡记录，使用本地数据')
             }
 
-            // 重新读取本地记录（包含刚保存的新记录）
-            const records = await gachaData.loadUserRecords(uid, sklUser.uid)
-            
+        } catch (error) {
+            networkFailed = true
+            fetchError = error.message
+            logger.error(`获取抽卡记录网络数据失败: ${error}`)
+        }
+
+        // 读取本地记录（无论网络成功与否）
+        const records = await gachaData.loadUserRecords(uid, sklUser.uid)
+
+        if (records.length === 0) {
+            if (networkFailed) {
+                await this.reply(`无法从网络获取数据: ${fetchError}\n且本地无抽卡记录`)
+            } else {
+                await this.reply('未找到抽卡记录')
+            }
+            return true
+        }
+
+        // 如果网络获取失败，告知用户
+        if (networkFailed) {
+            await this.reply(`⚠️ 获取网络数据失败: ${fetchError}\n正在使用本地缓存的数据进行展示...`)
+        }
+
+        try {
             // 获取配置的天数范围
             const config = setting.getConfig('gacha')
             const daysRange = config?.days_range || 180
@@ -143,8 +159,8 @@ export class Gacha extends plugin {
             await this.renderGachaCard(groupedData, game_res.data, sklUser, daysRange)
 
         } catch (error) {
-            logger.error(`获取抽卡记录失败: ${error}`)
-            await this.reply(`获取抽卡记录失败: ${error.message}`)
+            logger.error(`处理抽卡记录失败: ${error}`)
+            await this.reply(`处理抽卡记录失败: ${error.message}`)
         }
 
         return true
@@ -175,37 +191,37 @@ export class Gacha extends plugin {
 
         await this.reply(`正在获取卡池 [${poolName}] 的抽卡记录，请稍候...`)
 
+        let networkFailed = false
+        let fetchError = ''
+        const gachaData = new GachaData()
+
+        // 尝试从网络获取新记录
         try {
             // 获取grant_code
             const grantCode = await hypergryphAPI.getGrantCode(sklUser.token)
             if (!grantCode) {
-                await this.reply('获取授权码失败，请重新绑定token')
-                return true
+                throw new Error('获取授权码失败，请重新绑定token')
             }
 
             // 获取role_token
             const roleToken = await hypergryphAPI.getRoleToken(sklUser.uid, grantCode)
             if (!roleToken) {
-                await this.reply('获取角色令牌失败')
-                return true
+                throw new Error('获取角色令牌失败')
             }
 
             // 获取ak_cookie
             const akCookie = await hypergryphAPI.getAkCookie(roleToken)
             if (!akCookie) {
-                await this.reply('获取cookie失败')
-                return true
+                throw new Error('获取cookie失败')
             }
 
             // 获取卡池类别
             const categories = await this.getGachaCategories(sklUser.uid, roleToken, sklUser.token, akCookie)
             if (!categories || categories.length === 0) {
-                await this.reply('获取卡池类别失败')
-                return true
+                throw new Error('获取卡池类别失败')
             }
 
             // 先读取本地记录，获取最新时间戳用于增量更新
-            const gachaData = new GachaData()
             const localRecords = await gachaData.loadUserRecords(uid, sklUser.uid)
             let maxGachaTs = 0
             
@@ -223,11 +239,6 @@ export class Gacha extends plugin {
                 allRecords = allRecords.concat(records)
             }
 
-            if (allRecords.length === 0 && localRecords.length === 0) {
-                await this.reply('未找到抽卡记录')
-                return true
-            }
-
             // 保存新获取的抽卡记录
             if (allRecords.length > 0) {
                 await this.saveGachaRecords(uid, sklUser.uid, allRecords)
@@ -236,17 +247,33 @@ export class Gacha extends plugin {
                 logger.mark('[指定卡池抽卡记录] 没有新的抽卡记录，使用本地数据')
             }
 
-            // 重新读取本地记录（包含刚保存的新记录）
-            const records = await gachaData.loadUserRecords(uid, sklUser.uid)
-            
-            // 按卡池名称过滤记录（不受daysRange限制）
-            const poolRecords = records.filter(r => r.poolName === poolName)
-            
-            if (poolRecords.length === 0) {
-                await this.reply(`未找到卡池 [${poolName}] 的抽卡记录`)
-                return true
-            }
+        } catch (error) {
+            networkFailed = true
+            fetchError = error.message
+            logger.error(`获取指定卡池抽卡记录网络数据失败: ${error}`)
+        }
 
+        // 读取本地记录（无论网络成功与否）
+        const records = await gachaData.loadUserRecords(uid, sklUser.uid)
+        
+        // 按卡池名称过滤记录（不受daysRange限制）
+        const poolRecords = records.filter(r => r.poolName === poolName)
+        
+        if (poolRecords.length === 0) {
+            if (networkFailed) {
+                await this.reply(`无法从网络获取数据: ${fetchError}\n且本地无卡池 [${poolName}] 的抽卡记录`)
+            } else {
+                await this.reply(`未找到卡池 [${poolName}] 的抽卡记录`)
+            }
+            return true
+        }
+
+        // 如果网络获取失败，告知用户
+        if (networkFailed) {
+            await this.reply(`获取网络数据失败: ${fetchError}\n正在使用本地缓存的数据进行展示...`)
+        }
+
+        try {
             // 分组和统计
             const groupedData = await gachaData.groupRecords(poolRecords)
 
@@ -261,8 +288,8 @@ export class Gacha extends plugin {
             await this.renderGachaPoolCard(groupedData, game_res.data, sklUser, poolName)
 
         } catch (error) {
-            logger.error(`获取指定卡池抽卡记录失败: ${error}`)
-            await this.reply(`获取指定卡池抽卡记录失败: ${error.message}`)
+            logger.error(`处理指定卡池抽卡记录失败: ${error}`)
+            await this.reply(`处理指定卡池抽卡记录失败: ${error.message}`)
         }
 
         return true
@@ -283,39 +310,39 @@ export class Gacha extends plugin {
             return true
         }
 
-        try {
-            await this.reply('正在获取抽卡分析数据...')
+        await this.reply('正在获取抽卡分析数据...')
 
+        let networkFailed = false
+        let fetchError = ''
+        const gachaData = new GachaData()
+
+        // 尝试从网络获取新记录
+        try {
             // 获取授权码
             const grantCode = await hypergryphAPI.getGrantCode(sklUser.token)
             if (!grantCode) {
-                await this.reply('获取授权码失败')
-                return true
+                throw new Error('获取授权码失败')
             }
 
             // 获取roleToken
             const roleToken = await hypergryphAPI.getRoleToken(sklUser.uid, grantCode)
             if (!roleToken) {
-                await this.reply('获取角色令牌失败')
-                return true
+                throw new Error('获取角色令牌失败')
             }
 
             // 获取ak_cookie
             const akCookie = await hypergryphAPI.getAkCookie(roleToken)
             if (!akCookie) {
-                await this.reply('获取cookie失败')
-                return true
+                throw new Error('获取cookie失败')
             }
 
             // 获取卡池类别
             const categories = await this.getGachaCategories(sklUser.uid, roleToken, sklUser.token, akCookie)
             if (!categories || categories.length === 0) {
-                await this.reply('获取卡池类别失败')
-                return true
+                throw new Error('获取卡池类别失败')
             }
 
             // 先读取本地记录，获取最新时间戳用于增量更新
-            const gachaData = new GachaData()
             const localRecords = await gachaData.loadUserRecords(uid, sklUser.uid)
             let maxGachaTs = 0
             
@@ -333,11 +360,6 @@ export class Gacha extends plugin {
                 allRecords = allRecords.concat(records)
             }
 
-            if (allRecords.length === 0 && localRecords.length === 0) {
-                await this.reply('未找到抽卡记录')
-                return true
-            }
-
             // 保存新获取的抽卡记录
             if (allRecords.length > 0) {
                 await this.saveGachaRecords(uid, sklUser.uid, allRecords)
@@ -346,14 +368,30 @@ export class Gacha extends plugin {
                 logger.mark('[抽卡分析] 没有新的抽卡记录，使用本地数据')
             }
 
-            // 重新读取本地记录（包含刚保存的新记录）
-            const records = await gachaData.loadUserRecords(uid, sklUser.uid)
+        } catch (error) {
+            networkFailed = true
+            fetchError = error.message
+            logger.error(`获取抽卡分析网络数据失败: ${error}`)
+        }
 
-            if (records.length === 0) {
+        // 读取本地记录（无论网络成功与否）
+        const records = await gachaData.loadUserRecords(uid, sklUser.uid)
+
+        if (records.length === 0) {
+            if (networkFailed) {
+                await this.reply(`无法从网络获取数据: ${fetchError}\n且本地无抽卡记录`)
+            } else {
                 await this.reply('未找到抽卡记录')
-                return true
             }
+            return true
+        }
 
+        // 如果网络获取失败，告知用户
+        if (networkFailed) {
+            await this.reply(`⚠️ 获取网络数据失败: ${fetchError}\n正在使用本地缓存的数据进行展示...`)
+        }
+
+        try {
             // 分析统计（不限制时间范围）
             const analysisData = await gachaData.analyzeAllRecords(records)
 
@@ -368,8 +406,8 @@ export class Gacha extends plugin {
             await this.renderGachaAnalysis(analysisData, game_res.data, sklUser)
 
         } catch (error) {
-            logger.error(`获取抽卡分析失败: ${error}`)
-            await this.reply(`获取抽卡分析失败: ${error.message}`)
+            logger.error(`处理抽卡分析失败: ${error}`)
+            await this.reply(`处理抽卡分析失败: ${error.message}`)
         }
 
         return true
