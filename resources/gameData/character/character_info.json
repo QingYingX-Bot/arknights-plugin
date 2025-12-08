@@ -4680,6 +4680,59 @@
                 "X",
                 "Y"
             ]
+        },
+        "char_617_sharp2": {
+            "id": "char_617_sharp2",
+            "prof": "WARRIOR",
+            "subProf": "lord",
+            "name": "领主·Sharp",
+            "rarity": 6,
+            "modules": [
+                "",
+                "X"
+            ]
+        },
+        "char_616_pithst": {
+            "id": "char_616_pithst",
+            "prof": "SUPPORT",
+            "subProf": "ritualist",
+            "name": "盟约·辅助干员",
+            "rarity": 4,
+            "modules": [
+                "",
+                "X"
+            ]
+        },
+        "char_4212_nasti": {
+            "id": "char_4212_nasti",
+            "prof": "SUPPORT",
+            "subProf": "craftsman",
+            "name": "娜斯提",
+            "rarity": 6,
+            "modules": [
+                "",
+                "X"
+            ]
+        },
+        "char_4213_skybx": {
+            "id": "char_4213_skybx",
+            "prof": "SNIPER",
+            "subProf": "skybreaker",
+            "name": "天空盒",
+            "rarity": 5,
+            "modules": [
+                ""
+            ]
+        },
+        "char_4214_cairn": {
+            "id": "char_4214_cairn",
+            "prof": "TANK",
+            "subProf": "primprotector",
+            "name": "响石",
+            "rarity": 5,
+            "modules": [
+                ""
+            ]
         }
     }
 }
