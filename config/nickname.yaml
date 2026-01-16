@@ -1,0 +1,3 @@
+add_permission: master
+view_permission: all
+delete_permission: master
